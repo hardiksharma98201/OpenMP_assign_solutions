@@ -40,6 +40,9 @@ int main(int argc, char** argv) {
     MPI_Finalize();
     return 0;
 }
+OUTPUT 
+Estimated Pi = 3.141592
+Execution Time: 0.756 seconds
 
 // To perform matrix multiplication using mpi
 #include <mpi.h>
@@ -106,6 +109,9 @@ int main(int argc, char** argv) {
     MPI_Finalize();
     return 0;
 }
+OUTPUT 
+Sequential Execution Time: 0.005432 seconds
+Parallel Execution Time: 0.002134 seconds
 
 // Parallel Sorting Using MPI (Odd-Even Sort)
 #include <mpi.h>
@@ -146,6 +152,8 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
     return 0;
 }
+OUTPUT 
+
 // Heat Distribution Simulation Using MPI
 #include <mpi.h>
 #include <stdio.h>
@@ -206,6 +214,9 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
     return 0;
 }
+OUTPUT
+Total sum: 10
+
 // Parallel Dot Product Using MPI
 #include <mpi.h>
 #include <stdio.h>
@@ -235,6 +246,9 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
     return 0;
 }
+OUTPUT 
+Dot product: 338350
+
 
 // Parallel Prefix Sum (Scan) Using MPI
 #include <mpi.h>
@@ -255,6 +269,13 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
     return 0;
 }
+OUTPUT 
+Process 0 prefix sum: 1
+Process 1 prefix sum: 3
+Process 2 prefix sum: 6
+Process 3 prefix sum: 10
+
+
 // Parallel Matrix Transposition Using MPI
 #include <mpi.h>
 #include <stdio.h>
@@ -303,6 +324,13 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
     return 0;
 }
+OUTPUT 
+Transposed Matrix:
+1   5   9   13
+2   6  10   14
+3   7  11   15
+4   8  12   16
+
 
 
 
