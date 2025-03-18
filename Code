@@ -1,1 +1,312 @@
+// Estimating Pi Using the Monte Carlo Method with MPI
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+long long int total_points = 100000000; // Adjust for accuracy
+
+int main(int argc, char** argv) {
+    int rank, size;
+    long long int local_points, local_count = 0, global_count;
+    double x, y, pi, start_time, end_time;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    local_points = total_points / size;  // Divide work among processes
+    srand(time(NULL) + rank);  // Seed random number generator differently for each process
+
+    start_time = MPI_Wtime();
+
+    for (long long int i = 0; i < local_points; i++) {
+        x = (double)rand() / RAND_MAX;
+        y = (double)rand() / RAND_MAX;
+        if (x * x + y * y <= 1.0) {
+            local_count++;
+        }
+    }
+
+    MPI_Reduce(&local_count, &global_count, 1, MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        pi = (4.0 * global_count) / total_points;
+        end_time = MPI_Wtime();
+        printf("Estimated Pi = %f\n", pi);
+        printf("Execution Time: %f seconds\n", end_time - start_time);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
+// To perform matrix multiplication using mpi
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define N 70  // Matrix size
+
+void multiply_serial(double A[N][N], double B[N][N], double C[N][N]) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            C[i][j] = 0;
+            for (int k = 0; k < N; k++) {
+                C[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+}
+
+int main(int argc, char** argv) {
+    int rank, size;
+    double A[N][N], B[N][N], C[N][N], local_A[N / 2][N], local_C[N / 2][N];
+    double start_time, end_time;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) {
+        srand(time(NULL));
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                A[i][j] = rand() % 10;
+                B[i][j] = rand() % 10;
+            }
+        }
+
+        start_time = MPI_Wtime();  // Start time for sequential
+        multiply_serial(A, B, C);
+        end_time = MPI_Wtime();
+        printf("Sequential Execution Time: %f seconds\n", end_time - start_time);
+    }
+
+    MPI_Bcast(B, N * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Scatter(A, (N / size) * N, MPI_DOUBLE, local_A, (N / size) * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    start_time = MPI_Wtime();
+    for (int i = 0; i < N / size; i++) {
+        for (int j = 0; j < N; j++) {
+            local_C[i][j] = 0;
+            for (int k = 0; k < N; k++) {
+                local_C[i][j] += local_A[i][k] * B[k][j];
+            }
+        }
+    }
+    MPI_Gather(local_C, (N / size) * N, MPI_DOUBLE, C, (N / size) * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    end_time = MPI_Wtime();
+
+    if (rank == 0) {
+        printf("Parallel Execution Time: %f seconds\n", end_time - start_time);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
+// Parallel Sorting Using MPI (Odd-Even Sort)
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+void odd_even_sort(int *arr, int n, int rank, int size) {
+    int phase, partner, temp;
+    for (phase = 0; phase < n; phase++) {
+        if (phase % 2 == rank % 2) {
+            partner = rank + 1;
+        } else {
+            partner = rank - 1;
+        }
+
+        if (partner >= 0 && partner < size) {
+            MPI_Sendrecv(&arr[0], 1, MPI_INT, partner, 0, &temp, 1, MPI_INT, partner, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            if ((rank < partner && arr[0] > temp) || (rank > partner && arr[0] < temp)) {
+                arr[0] = temp;
+            }
+        }
+    }
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size, num;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    srand(rank);
+    num = rand() % 100;
+    printf("Process %d: %d\n", rank, num);
+
+    odd_even_sort(&num, size, rank, size);
+
+    printf("Process %d sorted value: %d\n", rank, num);
+    MPI_Finalize();
+    return 0;
+}
+// Heat Distribution Simulation Using MPI
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define N 10
+#define ITERATIONS 100
+
+void heat_distribution(double grid[N][N]) {
+    for (int iter = 0; iter < ITERATIONS; iter++) {
+        for (int i = 1; i < N - 1; i++) {
+            for (int j = 1; j < N - 1; j++) {
+                grid[i][j] = (grid[i - 1][j] + grid[i + 1][j] + grid[i][j - 1] + grid[i][j + 1]) / 4.0;
+            }
+        }
+    }
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    double grid[N][N] = {0};
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) {
+        for (int i = 0; i < N; i++) grid[0][i] = 100.0;
+    }
+
+    MPI_Bcast(grid, N * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    heat_distribution(grid);
+    
+    if (rank == 0) printf("Simulation completed.\n");
+
+    MPI_Finalize();
+    return 0;
+}
+// Parallel Reduction Using MPI
+
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, local_value, global_sum;
+    
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    
+    local_value = rank + 1;
+    MPI_Reduce(&local_value, &global_sum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        printf("Total sum: %d\n", global_sum);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+// Parallel Dot Product Using MPI
+#include <mpi.h>
+#include <stdio.h>
+
+#define N 100
+
+int main(int argc, char *argv[]) {
+    int rank, size, local_sum = 0, global_sum = 0;
+    int A[N], B[N];
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    for (int i = rank; i < N; i += size) {
+        A[i] = i + 1;
+        B[i] = i + 1;
+        local_sum += A[i] * B[i];
+    }
+
+    MPI_Reduce(&local_sum, &global_sum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        printf("Dot product: %d\n", global_sum);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
+// Parallel Prefix Sum (Scan) Using MPI
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, local_value, prefix_sum;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    local_value = rank + 1;
+    MPI_Scan(&local_value, &prefix_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+    printf("Process %d prefix sum: %d\n", rank, prefix_sum);
+
+    MPI_Finalize();
+    return 0;
+}
+// Parallel Matrix Transposition Using MPI
+#include <mpi.h>
+#include <stdio.h>
+
+#define N 4
+
+void print_matrix(int matrix[N][N]) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            printf("%d ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int A[N][N], B[N][N];
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) {
+        int value = 1;
+        for (int i = 0; i < N; i++)
+            for (int j = 0; j < N; j++)
+                A[i][j] = value++;
+    }
+
+    MPI_Bcast(A, N * N, MPI_INT, 0, MPI_COMM_WORLD);
+
+    for (int i = rank; i < N; i += size) {
+        for (int j = 0; j < N; j++) {
+            B[j][i] = A[i][j];
+        }
+    }
+
+    MPI_Gather(B, N * N / size, MPI_INT, A, N * N / size, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        printf("Transposed Matrix:\n");
+        print_matrix(A);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
+
+
+
+
+
 
